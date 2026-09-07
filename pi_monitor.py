@@ -37,7 +37,6 @@ UPDATE_INTERVAL = 10.0
 # 30 minutes
 DISPLAY_TIMEOUT = 30 * 60
 
-# Main loop responsiveness
 LOOP_INTERVAL = 0.10
 
 CPU_WARN = 80.0
@@ -60,21 +59,29 @@ SLIDE_HTOP = 1
 
 BG = (0, 0, 0)
 
-PRIMARY = (255, 255, 255)
-SECONDARY = (165, 165, 175)
-TERTIARY = (100, 100, 110)
+PRIMARY = (245, 245, 245)
+SECONDARY = (145, 145, 155)
+TERTIARY = (85, 85, 95)
 
-WARN = (255, 32, 0)
+WARN = (190, 25, 0)
 
-# htop-style vivid colors
-CYAN = (0, 255, 255)
-GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0)
-BLUE = (0, 160, 255)
-RED = (255, 32, 0)
+# ------------------------------------------------------------
+# htop-style colors tuned for this TFT
+# ------------------------------------------------------------
 
-# Inactive gauge segments
-BAR_OFF = (45, 45, 48)
+CYAN = (0, 150, 170)
+
+GREEN = (0, 135, 0)
+
+YELLOW = (190, 135, 0)
+
+BLUE = (0, 70, 180)
+
+RED = (190, 25, 0)
+
+# Make inactive segments much darker so active colors
+# appear stronger even on a low-contrast TFT panel.
+BAR_OFF = (18, 18, 22)
 
 
 # ============================================================
@@ -107,12 +114,12 @@ font_footer = ImageFont.truetype(
 
 font_htop_label = ImageFont.truetype(
     FONT_MONO,
-    10
+    11
 )
 
 font_htop_value = ImageFont.truetype(
     FONT_MONO,
-    9
+    10
 )
 
 font_htop_small = ImageFont.truetype(
@@ -162,7 +169,6 @@ shutdown_requested = threading.Event()
 sw1_pressed = threading.Event()
 
 display_is_on = True
-
 current_slide = SLIDE_MINIMAL
 
 last_activity = time.monotonic()
@@ -345,27 +351,14 @@ def get_memory_percent():
     )
 
 
-def get_load_info():
+def get_load_average():
     with open("/proc/loadavg") as f:
         fields = f.read().split()
 
-    load1 = float(fields[0])
-    load5 = float(fields[1])
-    load15 = float(fields[2])
-
-    running_text = fields[3]
-
-    running, tasks = running_text.split(
-        "/",
-        1
-    )
-
     return (
-        load1,
-        load5,
-        load15,
-        int(running),
-        int(tasks)
+        float(fields[0]),
+        float(fields[1]),
+        float(fields[2])
     )
 
 
@@ -450,19 +443,16 @@ def draw_segment_bar(
     mode="cpu"
 ):
     """
-    Draw a vivid htop-style segmented gauge.
+    Large segmented gauge tuned for this TFT.
 
     CPU:
-        green -> yellow -> red
+        green -> amber -> red
 
     Memory:
-        green -> blue -> yellow
-
-    The active segments use highly saturated RGB colors
-    for better visibility on the small 1.77-inch TFT.
+        green -> deep blue -> amber
     """
 
-    segments = 18
+    segments = 20
     gap = 1
 
     available_width = (
@@ -532,11 +522,6 @@ def draw_segment_bar(
 
             if mode == "cpu":
 
-                # CPU gauge:
-                # 0-59%   vivid green
-                # 60-79%  vivid yellow
-                # 80-100% vivid red
-
                 if ratio < 0.60:
                     color = GREEN
 
@@ -547,9 +532,6 @@ def draw_segment_bar(
                     color = RED
 
             else:
-
-                # MEM gauge:
-                # green -> blue -> yellow
 
                 if ratio < 0.40:
                     color = GREEN
@@ -594,20 +576,12 @@ def draw_minimal_screen(
         image
     )
 
-    # --------------------------------------------------------
-    # Header
-    # --------------------------------------------------------
-
     draw.text(
         (8, 5),
         "rpi1",
         font=font_header,
         fill=PRIMARY
     )
-
-    # --------------------------------------------------------
-    # CPU
-    # --------------------------------------------------------
 
     cpu_color = (
         WARN
@@ -633,10 +607,6 @@ def draw_minimal_screen(
         SECONDARY
     )
 
-    # --------------------------------------------------------
-    # Temperature
-    # --------------------------------------------------------
-
     temp_color = (
         WARN
         if temp >= TEMP_WARN
@@ -661,10 +631,6 @@ def draw_minimal_screen(
         SECONDARY
     )
 
-    # --------------------------------------------------------
-    # Memory
-    # --------------------------------------------------------
-
     mem_color = (
         WARN
         if mem >= MEM_WARN
@@ -688,10 +654,6 @@ def draw_minimal_screen(
         font_label,
         SECONDARY
     )
-
-    # --------------------------------------------------------
-    # Uptime
-    # --------------------------------------------------------
 
     draw.text(
         (8, 115),
@@ -722,9 +684,7 @@ def draw_htop_screen(
     uptime,
     load1,
     load5,
-    load15,
-    running,
-    tasks
+    load15
 ):
     image = Image.new(
         "RGB",
@@ -739,39 +699,15 @@ def draw_htop_screen(
         image
     )
 
-    # --------------------------------------------------------
-    # CPU gauge
-    # --------------------------------------------------------
+    # ========================================================
+    # CPU
+    # ========================================================
 
     draw.text(
         (4, 3),
         "CPU",
         font=font_htop_label,
         fill=CYAN
-    )
-
-    draw.text(
-        (28, 3),
-        "[",
-        font=font_htop_label,
-        fill=PRIMARY
-    )
-
-    draw_segment_bar(
-        draw,
-        36,
-        5,
-        88,
-        8,
-        cpu,
-        mode="cpu"
-    )
-
-    draw.text(
-        (126, 3),
-        "]",
-        font=font_htop_label,
-        fill=PRIMARY
     )
 
     cpu_text = (
@@ -791,7 +727,7 @@ def draw_htop_screen(
                 bbox[2]
                 - bbox[0]
             )
-            - 2,
+            - 3,
             4
         ),
         cpu_text,
@@ -799,19 +735,8 @@ def draw_htop_screen(
         fill=PRIMARY
     )
 
-    # --------------------------------------------------------
-    # Memory gauge
-    # --------------------------------------------------------
-
     draw.text(
-        (4, 19),
-        "MEM",
-        font=font_htop_label,
-        fill=CYAN
-    )
-
-    draw.text(
-        (28, 19),
+        (4, 18),
         "[",
         font=font_htop_label,
         fill=PRIMARY
@@ -819,19 +744,30 @@ def draw_htop_screen(
 
     draw_segment_bar(
         draw,
-        36,
-        21,
-        88,
-        8,
-        mem,
-        mode="mem"
+        14,
+        19,
+        132,
+        11,
+        cpu,
+        mode="cpu"
     )
 
     draw.text(
-        (126, 19),
+        (148, 18),
         "]",
         font=font_htop_label,
         fill=PRIMARY
+    )
+
+    # ========================================================
+    # Memory
+    # ========================================================
+
+    draw.text(
+        (4, 36),
+        "MEM",
+        font=font_htop_label,
+        fill=CYAN
     )
 
     mem_text = (
@@ -851,82 +787,62 @@ def draw_htop_screen(
                 bbox[2]
                 - bbox[0]
             )
-            - 2,
-            20
+            - 3,
+            37
         ),
         mem_text,
         font=font_htop_value,
         fill=PRIMARY
     )
 
-    # --------------------------------------------------------
-    # Load average
-    # --------------------------------------------------------
+    draw.text(
+        (4, 51),
+        "[",
+        font=font_htop_label,
+        fill=PRIMARY
+    )
 
-    y = 39
+    draw_segment_bar(
+        draw,
+        14,
+        52,
+        132,
+        11,
+        mem,
+        mode="mem"
+    )
 
     draw.text(
-        (4, y),
+        (148, 51),
+        "]",
+        font=font_htop_label,
+        fill=PRIMARY
+    )
+
+    # ========================================================
+    # Load
+    # ========================================================
+
+    draw.text(
+        (4, 72),
         "Load",
         font=font_htop_label,
         fill=CYAN
     )
 
     draw.text(
-        (44, y + 1),
+        (42, 73),
         f"{load1:.2f} {load5:.2f} {load15:.2f}",
         font=font_htop_value,
         fill=PRIMARY
     )
 
-    # --------------------------------------------------------
-    # Tasks
-    # --------------------------------------------------------
-
-    y = 55
-
-    draw.text(
-        (4, y),
-        "Tasks",
-        font=font_htop_label,
-        fill=CYAN
-    )
-
-    draw.text(
-        (50, y + 1),
-        str(tasks),
-        font=font_htop_value,
-        fill=PRIMARY
-    )
-
-    # --------------------------------------------------------
-    # Running
-    # --------------------------------------------------------
-
-    y = 71
-
-    draw.text(
-        (4, y),
-        "Running",
-        font=font_htop_label,
-        fill=CYAN
-    )
-
-    draw.text(
-        (66, y + 1),
-        str(running),
-        font=font_htop_value,
-        fill=GREEN
-    )
-
-    # --------------------------------------------------------
+    # ========================================================
     # Temperature
-    # --------------------------------------------------------
-
-    y = 87
+    # ========================================================
 
     draw.text(
-        (4, y),
+        (4, 89),
         "Temp",
         font=font_htop_label,
         fill=CYAN
@@ -939,38 +855,32 @@ def draw_htop_screen(
     )
 
     draw.text(
-        (44, y + 1),
+        (42, 90),
         f"{temp:.1f}C",
         font=font_htop_value,
         fill=temp_color
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # Uptime
-    # --------------------------------------------------------
-
-    y = 103
+    # ========================================================
 
     draw.text(
-        (4, y),
+        (4, 106),
         "Uptime",
         font=font_htop_label,
         fill=CYAN
     )
 
     draw.text(
-        (58, y + 1),
+        (58, 107),
         uptime,
         font=font_htop_value,
         fill=PRIMARY
     )
 
-    # --------------------------------------------------------
-    # Slide indicator
-    # --------------------------------------------------------
-
     draw.text(
-        (145, 116),
+        (149, 117),
         "2",
         font=font_htop_small,
         fill=TERTIARY
@@ -991,9 +901,7 @@ def draw_current_screen(
     uptime,
     load1,
     load5,
-    load15,
-    running,
-    tasks
+    load15
 ):
     if current_slide == SLIDE_MINIMAL:
 
@@ -1013,9 +921,7 @@ def draw_current_screen(
             uptime,
             load1,
             load5,
-            load15,
-            running,
-            tasks
+            load15
         )
 
 
@@ -1043,11 +949,10 @@ def turn_display_off():
     if not display_is_on:
         return
 
-    # Clear LCD first.
     clear_display()
 
     # Digital OFF only.
-    # Do not use PWM.
+    # Never use PWM.
     lcd177_1.set_backlight(False)
 
     display_is_on = False
@@ -1058,7 +963,7 @@ def turn_display_on():
     global last_activity
 
     # Digital ON only.
-    # Do not use PWM.
+    # Never use PWM.
     lcd177_1.set_backlight(True)
 
     display_is_on = True
@@ -1132,6 +1037,41 @@ def perform_shutdown():
 
 
 # ============================================================
+# Read all monitor values
+# ============================================================
+
+def read_monitor_values(
+    previous_cpu
+):
+    cpu, previous_cpu = (
+        get_cpu_percent(
+            previous_cpu
+        )
+    )
+
+    temp = get_cpu_temp()
+    mem = get_memory_percent()
+    uptime = get_uptime()
+
+    (
+        load1,
+        load5,
+        load15
+    ) = get_load_average()
+
+    return (
+        previous_cpu,
+        cpu,
+        temp,
+        mem,
+        uptime,
+        load1,
+        load5,
+        load15
+    )
+
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -1153,7 +1093,7 @@ def main():
     previous_cpu = read_cpu_times()
 
     # --------------------------------------------------------
-    # Initial CPU sample
+    # Initial CPU sampling
     # --------------------------------------------------------
 
     start = time.monotonic()
@@ -1169,21 +1109,18 @@ def main():
 
         time.sleep(0.05)
 
-    cpu, previous_cpu = get_cpu_percent(
-        previous_cpu
-    )
-
-    temp = get_cpu_temp()
-    mem = get_memory_percent()
-    uptime = get_uptime()
-
     (
+        previous_cpu,
+        cpu,
+        temp,
+        mem,
+        uptime,
         load1,
         load5,
-        load15,
-        running,
-        tasks
-    ) = get_load_info()
+        load15
+    ) = read_monitor_values(
+        previous_cpu
+    )
 
     draw_current_screen(
         cpu,
@@ -1192,9 +1129,7 @@ def main():
         uptime,
         load1,
         load5,
-        load15,
-        running,
-        tasks
+        load15
     )
 
     last_update = time.monotonic()
@@ -1230,28 +1165,22 @@ def main():
 
                     turn_display_on()
 
-                    # Reset CPU sampling baseline.
                     previous_cpu = read_cpu_times()
 
                     time.sleep(0.25)
 
-                    cpu, previous_cpu = (
-                        get_cpu_percent(
-                            previous_cpu
-                        )
-                    )
-
-                    temp = get_cpu_temp()
-                    mem = get_memory_percent()
-                    uptime = get_uptime()
-
                     (
+                        previous_cpu,
+                        cpu,
+                        temp,
+                        mem,
+                        uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
-                    ) = get_load_info()
+                        load15
+                    ) = read_monitor_values(
+                        previous_cpu
+                    )
 
                     draw_current_screen(
                         cpu,
@@ -1260,9 +1189,7 @@ def main():
                         uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
+                        load15
                     )
 
                     last_update = (
@@ -1285,24 +1212,18 @@ def main():
                     else:
                         current_slide = SLIDE_MINIMAL
 
-                    # Immediately redraw selected slide.
-                    cpu, previous_cpu = (
-                        get_cpu_percent(
-                            previous_cpu
-                        )
-                    )
-
-                    temp = get_cpu_temp()
-                    mem = get_memory_percent()
-                    uptime = get_uptime()
-
                     (
+                        previous_cpu,
+                        cpu,
+                        temp,
+                        mem,
+                        uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
-                    ) = get_load_info()
+                        load15
+                    ) = read_monitor_values(
+                        previous_cpu
+                    )
 
                     draw_current_screen(
                         cpu,
@@ -1311,9 +1232,7 @@ def main():
                         uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
+                        load15
                     )
 
                     last_update = (
@@ -1332,6 +1251,7 @@ def main():
                 )
 
                 if idle_time >= DISPLAY_TIMEOUT:
+
                     turn_display_off()
 
                     time.sleep(
@@ -1352,23 +1272,18 @@ def main():
                     >= UPDATE_INTERVAL
                 ):
 
-                    cpu, previous_cpu = (
-                        get_cpu_percent(
-                            previous_cpu
-                        )
-                    )
-
-                    temp = get_cpu_temp()
-                    mem = get_memory_percent()
-                    uptime = get_uptime()
-
                     (
+                        previous_cpu,
+                        cpu,
+                        temp,
+                        mem,
+                        uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
-                    ) = get_load_info()
+                        load15
+                    ) = read_monitor_values(
+                        previous_cpu
+                    )
 
                     draw_current_screen(
                         cpu,
@@ -1377,9 +1292,7 @@ def main():
                         uptime,
                         load1,
                         load5,
-                        load15,
-                        running,
-                        tasks
+                        load15
                     )
 
                     last_update = (
