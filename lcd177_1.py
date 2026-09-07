@@ -28,7 +28,10 @@ SPI_SPEED_HZ = 8000000  # pigpioは4〜8MHz推奨
 # GPIO設定
 dc = DigitalOutputDevice(DC_PIN)
 reset = DigitalOutputDevice(RESET_PIN)
-backlight = DigitalOutputDevice(BACKLIGHT_PIN)
+backlight = DigitalOutputDevice(
+    BACKLIGHT_PIN,
+    initial_value=False
+)
 
 # ===== SPI初期化（spidev → pigpio）=====
 pi = pigpio.pi()
