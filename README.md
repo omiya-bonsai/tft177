@@ -1,90 +1,467 @@
-# ＴＦＴ1.77表示器とＳＷ２個、ＬＥＤ２個を実装したラズパイ汎用ＵＩ基板
+# tft177 - Raspberry Pi System Monitor
 
-<h4><<概要>></h4>
-　ＴＦＴ1.77表示器とスイッチ２個、ＬＥＤ２個を実装したテスト用のラズパイ専用基板です。 <br>
-　ブレッドボードで何か作ろうとしたときに、最低限のＵＩが必要ですが、それらもブレッドボード上に作るのは面倒です。 <br>
-　最低限のＵＩを備えたこの基板があれば、作るべき物だけに集中できるので、作業がはかどります。 <br>
-　すべてのソースプログラムを開示いたします。 <br>
+Raspberry Pi用「TFT 1.77インチ + スイッチ2個 + LED 2個」の汎用UI基板を使用した、
+小型システムモニターです。
 
-・LEDの色等指定はできません。<br>
-・部品の仕様が変わる場合があります。 <br>
-・基板のバージョンが変わる場合がありますが、機能等に違いはありません。<br>
-・ラズパイは付属しません。<br>
+このリポジトリは [momorara/tft177](https://github.com/momorara/tft177) をforkし、
+Raspberry Piの常時表示システムモニターとして機能を追加したものです。
 
-<h4><<使用方法>></h4>
-git clone https://github.com/momorara/tft177 <br>
-でラズパイにダウンロードしてください。<br>
-インストールについては、インストール文書に従いインストールを行ってください。<br>
-本基板にはブレッドボードと繋ぎやすいように、連結ピンを装着しています。
-説明写真のような使い方ができます。<br>
-もし、ブレッドボードにスイッチ2個、LEDを2個配線すると、それだけでも複雑になリます。<br>
-Install出来たら、testプログラムを起動してみてください。<br>
-プログラム名に「1」がついているものは、ブラグを液晶側にした時のものです。<br>
+- Upstream: [momorara/tft177](https://github.com/momorara/tft177)
+- Fork: [omiya-bonsai/tft177](https://github.com/omiya-bonsai/tft177)
 
-<h4><<使用説明資料>></h4>
-説明書類の中の資料を確認ください。
-お問い合わせに関しては、サポート.txtを参照ください。<br>
+---
 
-<h4><<動作環境>>></h4>
-2023/8/4 対応OS：Buster版、Bullseye版(〜11.7)での動作を確認しています。<br>
-2023/12/6 対応OS：Bullseye版(11.8)での動作を確認しました。<br>
-2024/2/22 Pi5を調達しBookWormで検証しましたが、動作しませんでした。時間がかかりそうです。<br>
-2024/2/27 Pi5での動作:メインの液晶については、まだ使えませんが、LEDとSWについては動作確認ができました。別プログラムになります、必要な方はメールにて問い合わせください。<br>
-2024/5/1  Pi5、BookWorm(12.5)での動作確認ができました、合わせてLEDとSW関係の修正し、プログラムとしては、Buster版(10.13)、Bullseye版(11.9)、BookWorm版で同一です。
-現在動作している方は入れ替える必要はありませんが、Pi5、BookWormでの使用を考えられる場合は入れ替えて下さい。ただし、Buster版、Bullseye版とBookWorm版ではインストール方法が違います。
-また、BookWorm版では仮想環境下での動作となります。今回の修正に関しては、ユーサーの神山様からのご協力で実現しました。<br>
-2024/07/28 bullseye 11.10 で動作確認しました。(on update)<br>
-2025/01/07 bullseye 11.11 で動作確認しました。<br>
-2025/01/10 ライブラリを全面的に書き直し、Pi5 BookWorm12.8. 32bit、Pi4 Bullseye11.11 32bitで動作確認しました。<br>
-2025/02/14 Pi4B 対応OS：BookWorm版(12.9)での動作を確認しました。<br>
-2025/03/25 対応OS：Bookworm版12.10(64bit)にて動作確認しました。<br>
-2025/06/18 対応OS：Bookworm版12.11(64bit)にて動作確認しました。<br>
-2025/10/03 対応OS：Bookworm版12.12(64bit)にて動作確認しました。<br>
-2025/10/03 対応OS：Trixie版13.1(64bit)にて動作確認しました。<br>
-2025/11/17 対応OS：Trixie版13.2(64bit)にて動作確認しました。<br>
-2026/01/28 対応OS：Trixie版13.3(64bit)にて動作確認しました。<br>
-2026/03/19 対応OS：Trixie版13.4(64bit)にて動作確認しました。<br>
-2026/04/13 対応OS：Trixie版13.4(32bit)にて各機種動作確認しました。
-対応ラズパイ 1A,1B,2B,3B,4B,Zero,Zero2で動作しますが、3B以上推奨です。<br>
-5Bは動作しません、3B未満では動作が遅いです。<br>
-2026/05/17 対応OS：Trixie版13.5(64bit)にて種動作確認しました。<br>
-2026/07/13 対応OS：Bookworm版12.14(64bit)にて動作確認しました。<br>
-         
-<h4><<ライセンス>></h4>
+## System Monitor
+
+`pi_monitor.py` でRaspberry Piの状態を1.77インチTFTへ常時表示します。
+
+表示項目：
+
+- CPU使用率
+- CPU温度
+- メモリ使用率
+- Uptime
+
+160 x 128 pxの小型ディスプレイで視認しやすいよう、
+情報量を抑えた2カラムUIにしています。
+
+```text
+rpi1
+
+  12%          43.2°
+  CPU          TEMP
+
+  31%
+  MEMORY
+
+Up 2d 04h
+```
+
+数値には `DejaVu Sans ExtraLight`、ラベルには通常の `DejaVu Sans` を使用しています。
+
+通常時はモノトーン表示とし、CPU負荷・CPU温度・メモリ使用率が閾値を超えた場合のみ赤色で表示します。
+
+---
+
+## Controls
+
+### SW2 - Safe Shutdown
+
+SW2を約2秒間長押しすると、Raspberry Piを安全にシャットダウンします。
+
+シャットダウン開始時にはTFTへ
+
+```text
+Shutting Down
+
+please wait
+```
+
+と表示し、LED2が点滅します。
+
+GPIO：
+
+| Device | GPIO | Function |
+|---|---:|---|
+| SW1 | GPIO5 | Reserved |
+| SW2 | GPIO6 | Shutdown button |
+| LED1 | GPIO17 | Reserved |
+| LED2 | GPIO27 | Shutdown indicator |
+| TFT RESET | GPIO18 | Display reset |
+| TFT Backlight | GPIO13 | Backlight |
+| TFT DC | GPIO0 | Data / Command |
+
+SW1 / SW2は `gpiozero.Button` の内部プルダウンを使用します。
+
+---
+
+## Hardware
+
+使用基板：
+
+**ラズベリーパイ用 汎用UI基板（TFT 1.77インチ）**
+
+TFT：
+
+- 1.77 inch
+- 160 x 128 px
+- RGB
+- SPI
+
+基板には以下が搭載されています。
+
+- TFTディスプレイ x1
+- スイッチ x2
+- LED x2
+
+本環境では、LCD側にプラグを設定する `_1` 系プログラムを使用しています。
+
+```text
+lcd177_1.py
+test_tft_12345_1.py
+```
+
+---
+
+## Tested Environment
+
+このforkのシステムモニターは以下の環境で動作確認しています。
+
+```text
+Raspberry Pi 1
+Raspberry Pi OS / Debian
+Python 3
+pigpio
+SPI
+160 x 128 TFT
+```
+
+TFT表示、システムモニター、自動起動、SW2長押しによるシャットダウンを実機で確認しています。
+
+---
+
+## Installation
+
+### 1. Clone
+
+このforkを使用する場合：
+
+```bash
+git clone https://github.com/omiya-bonsai/tft177.git
+cd tft177
+```
+
+### 2. SPIを有効化
+
+```bash
+sudo raspi-config
+```
+
+SPIを有効にします。
+
+### 3. 必要パッケージ
+
+```bash
+sudo apt update
+
+sudo apt install -y \
+  python3-pigpio \
+  python3-pil \
+  python3-gpiozero \
+  pigpio \
+  fonts-dejavu \
+  fonts-ipafont
+```
+
+### 4. pigpiod
+
+```bash
+sudo systemctl enable --now pigpiod
+```
+
+確認：
+
+```bash
+systemctl status pigpiod --no-pager
+```
+
+### 5. TFTテスト
+
+```bash
+cd ~/tft177
+sudo python3 test_tft_12345_1.py
+```
+
+TFTへ数字列が表示されれば基本的なSPI通信は正常です。
+
+---
+
+## Run System Monitor
+
+手動で実行する場合：
+
+```bash
+cd ~/tft177
+sudo python3 pi_monitor.py
+```
+
+停止：
+
+```text
+Ctrl-C
+```
+
+通常運用ではsystemdから起動します。
+
+---
+
+## systemd
+
+`pi_monitor.py` はsystemdサービスとして常時起動できます。
+
+サービス：
+
+```text
+/etc/systemd/system/tft-monitor.service
+```
+
+設定例：
+
+```ini
+[Unit]
+Description=TFT System Monitor
+After=network.target pigpiod.service
+Requires=pigpiod.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/bonsai/tft177
+ExecStart=/usr/bin/python3 /home/bonsai/tft177/pi_monitor.py
+
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+反映：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable tft-monitor.service
+sudo systemctl start tft-monitor.service
+```
+
+状態確認：
+
+```bash
+systemctl status tft-monitor.service --no-pager
+```
+
+ログ：
+
+```bash
+journalctl -u tft-monitor.service
+```
+
+再起動：
+
+```bash
+sudo systemctl restart tft-monitor.service
+```
+
+停止：
+
+```bash
+sudo systemctl stop tft-monitor.service
+```
+
+---
+
+## Display Flicker
+
+### バックライトPWMを使用しない
+
+この環境では、GPIO13のバックライトを `PWMOutputDevice` で駆動すると、
+TFT表示に強いチラつきが発生しました。
+
+問題が発生した構成：
+
+```python
+from gpiozero import PWMOutputDevice
+
+backlight = PWMOutputDevice(
+    BACKLIGHT_PIN,
+    frequency=1000,
+    initial_value=0.45
+)
+```
+
+実機では、雷のような強い明滅が発生しました。
+
+バックライトを通常のデジタル出力へ戻すことで解消しています。
+
+```python
+from gpiozero import DigitalOutputDevice
+
+backlight = DigitalOutputDevice(
+    BACKLIGHT_PIN,
+    initial_value=False
+)
+```
+
+ON/OFF：
+
+```python
+def set_backlight(state):
+    if state:
+        backlight.on()
+    else:
+        backlight.off()
+```
+
+現在はGPIO13を常時HIGHとして使用しています。
+
+**この環境ではバックライトのソフトウェアPWMは使用しないでください。**
+
+---
+
+## Display Update
+
+TFTへの描画は `lcd177_1.py` の `draw_image()` を使用します。
+
+SPI設定：
+
+```python
+SPI_DEVICE = 0
+SPI_SPEED_HZ = 8000000
+```
+
+画面はPillow上で完成させてから、1フレームとしてTFTへ転送します。
+
+過去に部分更新も試しましたが、このTFTでは強い表示乱れが発生したため採用していません。
+
+現在は安定性を優先して全面更新方式を使用しています。
+
+---
+
+## Fonts
+
+システムモニターでは以下を使用します。
+
+### Values
+
+```text
+/usr/share/fonts/truetype/dejavu/DejaVuSans-ExtraLight.ttf
+```
+
+CPU使用率、CPU温度、メモリ使用率などの大きな数値に使用します。
+
+### Labels
+
+```text
+/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+```
+
+`CPU`、`TEMP`、`MEMORY`、Uptimeなどに使用します。
+
+---
+
+## Files
+
+主なファイル：
+
+```text
+lcd177_1.py
+    TFT制御
+
+pi_monitor.py
+    Raspberry Pi System Monitor
+
+test_tft_12345_1.py
+    TFT基本表示テスト
+
+test_LED.py
+    LEDテスト
+
+test_sw.py
+    スイッチテスト
+```
+
+---
+
+## Git
+
+このforkではremoteを次のように構成しています。
+
+```text
+origin
+  https://github.com/omiya-bonsai/tft177.git
+
+upstream
+  https://github.com/momorara/tft177.git
+```
+
+通常の変更：
+
+```bash
+git add .
+git commit -m "..."
+git push
+```
+
+上流リポジトリの更新確認：
+
+```bash
+git fetch upstream
+```
+
+---
+
+## Upstream Project
+
+このプロジェクトのハードウェア制御およびTFTドライバは、
+TKJ-Works / momorara氏のオリジナルプロジェクトをベースにしています。
+
+Upstream：
+
+[https://github.com/momorara/tft177](https://github.com/momorara/tft177)
+
+オリジナルプロジェクトは、TFT 1.77インチ、スイッチ2個、LED 2個を搭載した
+Raspberry Pi用汎用UI基板のサンプルプログラムとして公開されています。
+
+2026年4月以降のバージョンでは、TFTのSPI通信に `pigpio` が使用されています。
+
+---
+
+## Upstream Compatibility Notes
+
+上流READMEでは以下のRaspberry Pi / OSについて動作確認情報が公開されています。
+
+主な近年の更新：
+
+- 2025-01-10: ライブラリを全面的に更新
+- 2025-03-25: Bookworm 12.10 64bit
+- 2025-06-18: Bookworm 12.11 64bit
+- 2025-10-03: Bookworm 12.12 / Trixie 13.1
+- 2025-11-17: Trixie 13.2
+- 2026-01-28: Trixie 13.3
+- 2026-03-19: Trixie 13.4 64bit
+- 2026-04-08: `spidev` から `pigpio` へ変更
+- 2026-04-13: Trixie 13.4 32bit
+- 2026-05-17: Trixie 13.5 64bit
+- 2026-07-13: Bookworm 12.14 64bit
+
+詳細についてはupstreamリポジトリおよび付属資料を参照してください。
+
+---
+
+## License
+
 This project is licensed under the MIT License.
-使用しているライブラリについては、ライブラリ制作者のライセンス規定を参照ください。 <br>
-オリジナル部分については、オープソースとさせていただきます。 <br>
-プログラム自体はサンプルプログラムです。 <br>
 
-<h4><<サポート情報>>></h4>
-2022/10/10
-lcd177.pyのinit('reset’)にバグがありました。 <br>
-本来は、lcd177.init('reset') とすれば、画面が消去され、カーソルが原点に戻るはずでした。 <br>
-しかし、この機能が動作していませんでした。 <br>
-こちらの不手際で、大変ご迷惑をおかけしました。 <br>
-改修したプログラムをアップロードしましたので、こちらに入れ替えて試してみてください。 <br>
-よろしくお願いします。<br>
-2023/09/16 lcd177.pyを実行可能にして、説明を追加しました。<br>
-2023/09/22 タクトスイッチをソフトブルダウン仕様に変更 test_sw.py<br>
-           いずれR1,R2がなくなります。<br>
-2024/2/10 ターミナルプロックの位置による設定がわかりにくいので、取扱説明書を改訂作成しました。<br>
-またそれに合わせ、プログラムを整理いたしました。<br>
-現在問題なく使用できている場合は更新する必要はないですが、最新バージョンをアップロードしています。<br>
-2024/03/21　組み立て説明書をアップロードしました。<br>
-2024/05/01  Pi5、BookWorm(12.5)で動作することを確認し、プログラム、資料を修正しました。<br>
-2025/01/07  Pi5、BookWorm(12.8)で今の所動作しません。アップデートしないでください。<br>
-2025/01/10　ライブラリを全面的に作り直しました。最新OSに対応しました。<br>
-2026/04/08　spidevを使わずにpigpio (Unlicense)を使うように改造しました。<br>
-         
-<h4><<サポート窓口>></h4>
-  メールアドレスが　tkj-works@mbr.nifty.com に変更になっています。<br>
-  資料等を修正中ですが、ご注意ください。<br>
-  サポートコミュニティー　https://www.facebook.com/groups/3773038759434230<br>
+オリジナル部分および使用ライブラリについては、
+それぞれのライセンス条件に従います。
 
-<br>
--------------------------------------------<br>
-基板の販売について、以下のショップにて扱っています。<br>
-BASEショップ<br>
-https://raspi.thebase.in/<br>
-スイッチサイエンス<br>
-https://www.switch-science.com/search?q=tkj<br>
+詳細：
+
+```text
+LICENSE.txt
+THIRD_PARTY_LICENSES.txt
+```
+
+---
+
+## Credits
+
+Original project:
+
+- TKJ-Works / momorara
+- https://github.com/momorara/tft177
+
+System Monitor fork:
+
+- omiya-bonsai
+- https://github.com/omiya-bonsai/tft177
