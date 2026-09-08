@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import subprocess
 import threading
 import time
@@ -50,6 +51,8 @@ MEM_WARN = 85.0
 
 SW1_PIN = 5
 SW2_PIN = 6
+
+LED1_PIN = 17
 LED2_PIN = 27
 
 SHUTDOWN_HOLD_TIME = 2.0
@@ -57,6 +60,17 @@ SHUTDOWN_HOLD_TIME = 2.0
 SLIDE_MINIMAL = 0
 SLIDE_HTOP = 1
 
+
+# ============================================================
+# Storage activity LED
+# ============================================================
+
+# Raspberry Pi SD card block device
+STORAGE_STAT_PATH = "/sys/block/mmcblk0/stat"
+
+# Poll every 50 ms
+STORAGE_POLL_INTERVAL = 0.01
+STORAGE_LED_HOLD_TIME = 0.03
 
 # ============================================================
 # Colors
@@ -169,6 +183,12 @@ sw2 = Button(
     hold_repeat=False
 )
 
+# SD card activity LED
+led1 = LED(
+    LED1_PIN
+)
+
+# Shutdown indicator LED
 led2 = LED(
     LED2_PIN
 )
@@ -180,6 +200,8 @@ led2 = LED(
 
 shutdown_requested = threading.Event()
 sw1_pressed = threading.Event()
+
+storage_monitor_stop = threading.Event()
 
 display_is_on = True
 current_slide = SLIDE_MINIMAL
@@ -202,6 +224,117 @@ def request_shutdown():
 
 sw1.when_pressed = request_slide_action
 sw2.when_held = request_shutdown
+
+
+# ============================================================
+# Storage activity monitoring
+# ============================================================
+
+def read_storage_activity():
+    """
+    Read Linux block-device statistics.
+
+    /sys/block/mmcblk0/stat fields include:
+      0  reads completed
+      2  sectors read
+      4  writes completed
+      6  sectors written
+
+    We use those four counters to detect both reads and writes.
+    """
+
+    with open(
+        STORAGE_STAT_PATH
+    ) as f:
+        values = list(
+            map(
+                int,
+                f.read().split()
+            )
+        )
+
+    if len(values) < 7:
+        raise RuntimeError(
+            "unexpected mmcblk0 stat format"
+        )
+
+    return (
+        values[0],
+        values[2],
+        values[4],
+        values[6]
+    )
+
+
+def storage_activity_worker():
+    """
+    Monitor SD-card activity and drive LED1.
+
+    The LED is kept on for a short minimum period so very short
+    I/O operations remain visible to the human eye.
+    """
+
+    if not os.path.exists(
+        STORAGE_STAT_PATH
+    ):
+        print(
+            "WARNING: storage activity monitor disabled: "
+            f"{STORAGE_STAT_PATH} not found"
+        )
+
+        led1.off()
+        return
+
+    try:
+        previous = read_storage_activity()
+
+    except Exception as exc:
+        print(
+            "WARNING: storage activity monitor disabled: "
+            f"{exc}"
+        )
+
+        led1.off()
+        return
+
+    led_until = 0.0
+
+    while not storage_monitor_stop.is_set():
+
+        now = time.monotonic()
+
+        try:
+            current = read_storage_activity()
+
+        except Exception as exc:
+            print(
+                f"WARNING: storage stat read failed: {exc}"
+            )
+
+            led1.off()
+            return
+
+        if current != previous:
+
+            # Storage access detected.
+            led1.on()
+
+            led_until = max(
+                led_until,
+                now + STORAGE_LED_HOLD_TIME
+            )
+
+            previous = current
+
+        elif now >= led_until:
+
+            led1.off()
+
+        storage_monitor_stop.wait(
+            STORAGE_POLL_INTERVAL
+        )
+
+    led1.off()
 
 
 # ============================================================
@@ -916,8 +1049,6 @@ def draw_htop_screen(
         fill=PRIMARY
     )
 
-    # Slide indicator
-
     draw.text(
         (149, 117),
         "2",
@@ -1054,6 +1185,11 @@ def draw_shutdown_screen():
 # ============================================================
 
 def perform_shutdown():
+
+    # Stop storage monitor so LED1 no longer changes.
+    storage_monitor_stop.set()
+    led1.off()
+
     lcd177_1.set_backlight(True)
 
     draw_shutdown_screen()
@@ -1122,7 +1258,24 @@ def main():
 
     lcd177_1.init("on")
 
+    led1.off()
     led2.off()
+
+    # --------------------------------------------------------
+    # Start storage activity monitor
+    # --------------------------------------------------------
+
+    storage_thread = threading.Thread(
+        target=storage_activity_worker,
+        name="storage-activity",
+        daemon=True
+    )
+
+    storage_thread.start()
+
+    # --------------------------------------------------------
+    # Display state
+    # --------------------------------------------------------
 
     display_is_on = True
     current_slide = SLIDE_MINIMAL
@@ -1346,6 +1499,10 @@ def main():
         pass
 
     finally:
+
+        storage_monitor_stop.set()
+
+        led1.off()
         led2.off()
 
 
