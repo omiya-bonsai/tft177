@@ -1168,12 +1168,6 @@ def draw_htop_screen(
         fill=PRIMARY
     )
 
-    draw.text(
-        (149, 117),
-        "2",
-        font=font_htop_small,
-        fill=TERTIARY
-    )
 
     lcd177_1.image = image
     lcd177_1.draw_image()
