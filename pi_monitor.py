@@ -607,6 +607,30 @@ def get_uptime():
     )
 
 
+def get_sleep_remaining():
+    remaining = (
+        DISPLAY_TIMEOUT
+        - (
+            time.monotonic()
+            - last_activity
+        )
+    )
+
+    remaining = max(
+        0,
+        remaining
+    )
+
+    minutes = int(
+        remaining / 60
+    )
+
+    if minutes < 1:
+        return "<1m"
+
+    return f"{minutes}m"
+
+
 # ============================================================
 # Drawing helpers
 # ============================================================
@@ -903,6 +927,36 @@ def draw_minimal_screen(
         font=font_footer,
         fill=SECONDARY
     )
+
+    sleep_remaining = get_sleep_remaining()
+
+    sleep_text = (
+        f"Sleep {sleep_remaining}"
+    )
+
+    bbox = draw.textbbox(
+        (0, 0),
+        sleep_text,
+        font=font_footer
+    )
+
+    sleep_width = (
+        bbox[2]
+        - bbox[0]
+    )
+
+    draw.text(
+        (
+            WIDTH
+            - sleep_width
+            - 5,
+            115
+        ),
+        sleep_text,
+        font=font_footer,
+        fill=TERTIARY
+        )
+
 
     lcd177_1.image = image
     lcd177_1.draw_image()
