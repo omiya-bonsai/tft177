@@ -29,13 +29,18 @@ FONT_MONO = (
     "DejaVuSansMono.ttf"
 )
 
+PI_LOGO_PATH = (
+    "/home/bonsai/tft177/"
+    "raspberry-pi-logo-32x40.png"
+)
+
 WIDTH = 160
 HEIGHT = 128
 
 UPDATE_INTERVAL = 10.0
 
-# 45 minutes
-DISPLAY_TIMEOUT = 45 * 60
+# 30 minutes
+DISPLAY_TIMEOUT = 30 * 60
 
 LOOP_INTERVAL = 0.10
 
@@ -65,22 +70,13 @@ TERTIARY = (85, 85, 95)
 
 WARN = (190, 25, 0)
 
-# ------------------------------------------------------------
-# htop-style colors tuned for this TFT
-# ------------------------------------------------------------
-
+# htop-style colors
 CYAN = (0, 150, 170)
-
 GREEN = (0, 135, 0)
-
 YELLOW = (190, 135, 0)
-
 BLUE = (0, 70, 180)
-
 RED = (190, 25, 0)
 
-# Make inactive segments much darker so active colors
-# appear stronger even on a low-contrast TFT panel.
 BAR_OFF = (18, 18, 22)
 
 
@@ -138,6 +134,23 @@ font_shutdown_small = ImageFont.truetype(
     FONT_REGULAR,
     9
 )
+
+
+# ============================================================
+# Raspberry Pi logo
+# ============================================================
+
+try:
+    pi_logo = Image.open(
+        PI_LOGO_PATH
+    ).convert("RGB")
+
+except Exception as exc:
+    print(
+        f"WARNING: could not load Raspberry Pi logo: {exc}"
+    )
+
+    pi_logo = None
 
 
 # ============================================================
@@ -442,16 +455,6 @@ def draw_segment_bar(
     percent,
     mode="cpu"
 ):
-    """
-    Large segmented gauge tuned for this TFT.
-
-    CPU:
-        green -> amber -> red
-
-    Memory:
-        green -> deep blue -> amber
-    """
-
     segments = 20
     gap = 1
 
@@ -576,12 +579,20 @@ def draw_minimal_screen(
         image
     )
 
+    # --------------------------------------------------------
+    # Header
+    # --------------------------------------------------------
+
     draw.text(
         (8, 5),
         "rpi1",
         font=font_header,
         fill=PRIMARY
     )
+
+    # --------------------------------------------------------
+    # CPU
+    # --------------------------------------------------------
 
     cpu_color = (
         WARN
@@ -607,6 +618,10 @@ def draw_minimal_screen(
         SECONDARY
     )
 
+    # --------------------------------------------------------
+    # Temperature
+    # --------------------------------------------------------
+
     temp_color = (
         WARN
         if temp >= TEMP_WARN
@@ -631,6 +646,10 @@ def draw_minimal_screen(
         SECONDARY
     )
 
+    # --------------------------------------------------------
+    # Memory
+    # --------------------------------------------------------
+
     mem_color = (
         WARN
         if mem >= MEM_WARN
@@ -654,6 +673,24 @@ def draw_minimal_screen(
         font_label,
         SECONDARY
     )
+
+    # --------------------------------------------------------
+    # Raspberry Pi logo
+    # --------------------------------------------------------
+
+    if pi_logo is not None:
+
+        image.paste(
+            pi_logo,
+            (
+                99,
+                69
+            )
+        )
+
+    # --------------------------------------------------------
+    # Uptime
+    # --------------------------------------------------------
 
     draw.text(
         (8, 115),
@@ -878,6 +915,8 @@ def draw_htop_screen(
         font=font_htop_value,
         fill=PRIMARY
     )
+
+    # Slide indicator
 
     draw.text(
         (149, 117),
