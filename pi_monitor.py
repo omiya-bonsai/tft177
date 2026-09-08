@@ -183,16 +183,16 @@ sw2 = Button(
     hold_repeat=False
 )
 
-# SD card activity LED
+
+# SD card READ activity LED
 led1 = LED(
     LED1_PIN
 )
 
-# Shutdown indicator LED
+# SD card WRITE activity LED
 led2 = LED(
     LED2_PIN
 )
-
 
 # ============================================================
 # Events / State
@@ -268,10 +268,16 @@ def read_storage_activity():
 
 def storage_activity_worker():
     """
-    Monitor SD-card activity and drive LED1.
+    Monitor SD-card activity.
 
-    The LED is kept on for a short minimum period so very short
-    I/O operations remain visible to the human eye.
+    LED1 / GPIO17:
+        READ activity
+
+    LED2 / GPIO27:
+        WRITE activity
+
+    The LEDs are kept on for a short minimum period so very
+    short I/O operations remain visible to the human eye.
     """
 
     if not os.path.exists(
@@ -283,6 +289,7 @@ def storage_activity_worker():
         )
 
         led1.off()
+        led2.off()
         return
 
     try:
@@ -295,9 +302,11 @@ def storage_activity_worker():
         )
 
         led1.off()
+        led2.off()
         return
 
-    led_until = 0.0
+    read_led_until = 0.0
+    write_led_until = 0.0
 
     while not storage_monitor_stop.is_set():
 
@@ -312,29 +321,85 @@ def storage_activity_worker():
             )
 
             led1.off()
+            led2.off()
             return
 
-        if current != previous:
+        (
+            previous_reads,
+            previous_sectors_read,
+            previous_writes,
+            previous_sectors_written
+        ) = previous
 
-            # Storage access detected.
+        (
+            current_reads,
+            current_sectors_read,
+            current_writes,
+            current_sectors_written
+        ) = current
+
+        # ====================================================
+        # READ activity
+        # ====================================================
+
+        read_activity = (
+            current_reads
+            != previous_reads
+            or
+            current_sectors_read
+            != previous_sectors_read
+        )
+
+        if read_activity:
+
             led1.on()
 
-            led_until = max(
-                led_until,
+            read_led_until = max(
+                read_led_until,
                 now + STORAGE_LED_HOLD_TIME
             )
 
-            previous = current
-
-        elif now >= led_until:
+        elif now >= read_led_until:
 
             led1.off()
+
+        # ====================================================
+        # WRITE activity
+        # ====================================================
+
+        write_activity = (
+            current_writes
+            != previous_writes
+            or
+            current_sectors_written
+            != previous_sectors_written
+        )
+
+        if write_activity:
+
+            led2.on()
+
+            write_led_until = max(
+                write_led_until,
+                now + STORAGE_LED_HOLD_TIME
+            )
+
+        elif now >= write_led_until:
+
+            led2.off()
+
+        # ====================================================
+        # Save counters for next poll
+        # ====================================================
+
+        previous = current
 
         storage_monitor_stop.wait(
             STORAGE_POLL_INTERVAL
         )
 
     led1.off()
+    led2.off()
 
 
 # ============================================================
@@ -1186,19 +1251,16 @@ def draw_shutdown_screen():
 
 def perform_shutdown():
 
-    # Stop storage monitor so LED1 no longer changes.
+    # Stop storage monitor.
     storage_monitor_stop.set()
+
+    # Storage LEDs are no longer used as shutdown indicators.
     led1.off()
+    led2.off()
 
     lcd177_1.set_backlight(True)
 
     draw_shutdown_screen()
-
-    led2.blink(
-        on_time=0.15,
-        off_time=0.15,
-        background=True
-    )
 
     time.sleep(1.5)
 
@@ -1209,7 +1271,6 @@ def perform_shutdown():
         ],
         check=False
     )
-
 
 # ============================================================
 # Read all monitor values
